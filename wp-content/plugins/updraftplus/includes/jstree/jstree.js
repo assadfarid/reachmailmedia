@@ -13,7 +13,7 @@
 }(function ($, undefined) {
 	"use strict";
 /*!
- * jsTree 3.3.16
+ * jsTree 3.3.15
  * http://jstree.com/
  *
  * Copyright (c) 2014 Ivan Bozhanov (http://vakata.com)
@@ -63,7 +63,7 @@
 		 * specifies the jstree version in use
 		 * @name $.jstree.version
 		 */
-		version : '3.3.16',
+		version : '3.3.15',
 		/**
 		 * holds all the default options used when creating new instances
 		 * @name $.jstree.defaults
@@ -528,12 +528,7 @@
 				e.preventDefault();
 				this.edit(e.currentTarget);
 			}
-		},
-        /**
-		 * Should reselecting an already selected node trigger the select and changed callbacks
-		 * @name $.jstree.defaults.core.allow_reselect
-		 */
-        allow_reselect : false
+		}
 	};
 	$.jstree.core.prototype = {
 		/**
@@ -3177,7 +3172,7 @@
 					this.deselect_node(obj, false, e);
 				}
 				else {
-					if (this.settings.core.allow_reselect || !this.is_selected(obj) || this._data.core.selected.length !== 1) {
+					if (!this.is_selected(obj) || this._data.core.selected.length !== 1) {
 						this.deselect_all(true);
 						this.select_node(obj, false, false, e);
 					}

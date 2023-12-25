@@ -5,7 +5,7 @@
  *
  * Uses mcrypt, if available, and an internal implementation, otherwise.
  *
- * PHP version 5
+ * PHP versions 4 and 5
  *
  * Useful resources are as follows:
  *
@@ -18,9 +18,9 @@
  * Here's a short example of how to use this library:
  * <code>
  * <?php
- *    include 'vendor/autoload.php';
+ *    include 'Crypt/RC4.php';
  *
- *    $rc4 = new \phpseclib\Crypt\RC4();
+ *    $rc4 = new Crypt_RC4();
  *
  *    $rc4->setKey('abcdefgh');
  *
@@ -34,40 +34,65 @@
  * ?>
  * </code>
  *
+ * LICENSE: Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
  * @category  Crypt
- * @package   RC4
+ * @package   Crypt_RC4
  * @author    Jim Wigginton <terrafrost@php.net>
  * @copyright 2007 Jim Wigginton
  * @license   http://www.opensource.org/licenses/mit-license.html  MIT License
  * @link      http://phpseclib.sourceforge.net
  */
 
-namespace phpseclib\Crypt;
+/**
+ * Include Crypt_Base
+ *
+ * Base cipher class
+ */
+if (!class_exists('Crypt_Base')) {
+    include_once 'Base.php';
+}
+
+/**#@+
+ * @access private
+ * @see self::_crypt()
+ */
+define('CRYPT_RC4_ENCRYPT', 0);
+define('CRYPT_RC4_DECRYPT', 1);
+/**#@-*/
 
 /**
  * Pure-PHP implementation of RC4.
  *
- * @package RC4
+ * @package Crypt_RC4
  * @author  Jim Wigginton <terrafrost@php.net>
  * @access  public
  */
-class RC4 extends Base
+class Crypt_RC4 extends Crypt_Base
 {
-    /**#@+
-     * @access private
-     * @see \phpseclib\Crypt\RC4::_crypt()
-    */
-    const ENCRYPT = 0;
-    const DECRYPT = 1;
-    /**#@-*/
-
     /**
      * Block Length of the cipher
      *
      * RC4 is a stream cipher
      * so we the block_size to 0
      *
-     * @see \phpseclib\Crypt\Base::block_size
+     * @see Crypt_Base::block_size
      * @var int
      * @access private
      */
@@ -76,16 +101,25 @@ class RC4 extends Base
     /**
      * Key Length (in bytes)
      *
-     * @see \phpseclib\Crypt\RC4::setKeyLength()
+     * @see Crypt_RC4::setKeyLength()
      * @var int
      * @access private
      */
     var $key_length = 128; // = 1024 bits
 
     /**
+     * The namespace used by the cipher for its constants.
+     *
+     * @see Crypt_Base::const_namespace
+     * @var string
+     * @access private
+     */
+    var $const_namespace = 'RC4';
+
+    /**
      * The mcrypt specific name of the cipher
      *
-     * @see \phpseclib\Crypt\Base::cipher_name_mcrypt
+     * @see Crypt_Base::cipher_name_mcrypt
      * @var string
      * @access private
      */
@@ -94,7 +128,7 @@ class RC4 extends Base
     /**
      * Holds whether performance-optimized $inline_crypt() can/should be used.
      *
-     * @see \phpseclib\Crypt\Base::inline_crypt
+     * @see Crypt_Base::inline_crypt
      * @var mixed
      * @access private
      */
@@ -123,34 +157,39 @@ class RC4 extends Base
      *
      * Determines whether or not the mcrypt extension should be used.
      *
-     * @see \phpseclib\Crypt\Base::__construct()
-     * @return \phpseclib\Crypt\RC4
+     * @see Crypt_Base::Crypt_Base()
+     * @return Crypt_RC4
      * @access public
      */
     function __construct()
     {
-        parent::__construct(Base::MODE_STREAM);
+        parent::__construct(CRYPT_MODE_STREAM);
+    }
+
+    /**
+     * PHP4 compatible Default Constructor.
+     *
+     * @see self::__construct()
+     * @access public
+     */
+    function Crypt_RC4()
+    {
+        $this->__construct();
     }
 
     /**
      * Test for engine validity
      *
-     * This is mainly just a wrapper to set things up for \phpseclib\Crypt\Base::isValidEngine()
+     * This is mainly just a wrapper to set things up for Crypt_Base::isValidEngine()
      *
-     * @see \phpseclib\Crypt\Base::__construct()
+     * @see Crypt_Base::Crypt_Base()
      * @param int $engine
      * @access public
      * @return bool
      */
     function isValidEngine($engine)
     {
-        if ($engine == self::ENGINE_OPENSSL) {
-            // quoting https://www.openssl.org/news/openssl-3.0-notes.html, OpenSSL 3.0.1
-            // "Moved all variations of the EVP ciphers CAST5, BF, IDEA, SEED, RC2, RC4, RC5, and DES to the legacy provider"
-            // in theory openssl_get_cipher_methods() should catch this but, on GitHub Actions, at least, it does not
-            if (defined('OPENSSL_VERSION_TEXT') && version_compare(preg_replace('#OpenSSL (\d+\.\d+\.\d+) .*#', '$1', OPENSSL_VERSION_TEXT), '3.0.1', '>=')) {
-                return false;
-            }
+        if ($engine == CRYPT_ENGINE_OPENSSL) {
             if (version_compare(PHP_VERSION, '5.3.7') >= 0) {
                 $this->cipher_name_openssl = 'rc4-40';
             } else {
@@ -220,7 +259,7 @@ class RC4 extends Base
     /**
      * Encrypts a message.
      *
-     * @see \phpseclib\Crypt\Base::decrypt()
+     * @see Crypt_Base::decrypt()
      * @see self::_crypt()
      * @access public
      * @param string $plaintext
@@ -228,10 +267,10 @@ class RC4 extends Base
      */
     function encrypt($plaintext)
     {
-        if ($this->engine != self::ENGINE_INTERNAL) {
+        if ($this->engine != CRYPT_ENGINE_INTERNAL) {
             return parent::encrypt($plaintext);
         }
-        return $this->_crypt($plaintext, self::ENCRYPT);
+        return $this->_crypt($plaintext, CRYPT_RC4_ENCRYPT);
     }
 
     /**
@@ -240,7 +279,7 @@ class RC4 extends Base
      * $this->decrypt($this->encrypt($plaintext)) == $this->encrypt($this->encrypt($plaintext)).
      * At least if the continuous buffer is disabled.
      *
-     * @see \phpseclib\Crypt\Base::encrypt()
+     * @see Crypt_Base::encrypt()
      * @see self::_crypt()
      * @access public
      * @param string $ciphertext
@@ -248,38 +287,17 @@ class RC4 extends Base
      */
     function decrypt($ciphertext)
     {
-        if ($this->engine != self::ENGINE_INTERNAL) {
+        if ($this->engine != CRYPT_ENGINE_INTERNAL) {
             return parent::decrypt($ciphertext);
         }
-        return $this->_crypt($ciphertext, self::DECRYPT);
+        return $this->_crypt($ciphertext, CRYPT_RC4_DECRYPT);
     }
 
-    /**
-     * Encrypts a block
-     *
-     * @access private
-     * @param string $in
-     */
-    function _encryptBlock($in)
-    {
-        // RC4 does not utilize this method
-    }
-
-    /**
-     * Decrypts a block
-     *
-     * @access private
-     * @param string $in
-     */
-    function _decryptBlock($in)
-    {
-        // RC4 does not utilize this method
-    }
 
     /**
      * Setup the key (expansion)
      *
-     * @see \phpseclib\Crypt\Base::_setupKey()
+     * @see Crypt_Base::_setupKey()
      * @access private
      */
     function _setupKey()
@@ -296,7 +314,7 @@ class RC4 extends Base
         }
 
         $this->stream = array();
-        $this->stream[self::DECRYPT] = $this->stream[self::ENCRYPT] = array(
+        $this->stream[CRYPT_RC4_DECRYPT] = $this->stream[CRYPT_RC4_ENCRYPT] = array(
             0, // index $i
             0, // index $j
             $keyStream
